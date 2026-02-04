@@ -1,0 +1,17 @@
+# --- Python ---
+# Archivos compilados (no sirven para nada en Git)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Datos del Proyecto (Privacidad) ---
+# ¡IMPORTANTE! No queremos subir tus datos personales ni los de tus usuarios
+output/*.json
+output/*.csv
+
+# --- Herramientas de Sistema / IDE ---
+# Archivos de configuración de VS Code o Windows
+.vscode/
+
+# --- Logs ---
+*.log
