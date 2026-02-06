@@ -13,19 +13,19 @@ from utils.validators import validar_usuario, hash_password
 # --- FUNCIONES DE LA APLICACIÓN ---
 
 def menu_app(usuario):
-    # Definimos las rutas exclusivas para este usuario al entrar
     ruta_g = obtener_ruta_usuario(usuario['username'], "gastos")
-    ruta_n = obtener_ruta_usuario(usuario['username'], "nominas")
+    ruta_n = obtener_ruta_usuario(usuario['username'], "ingresos")
 
     while True:
-        print(f"\n--- PANEL DE CONTROL - {usuario['username'].upper()} ---")
-        print("1. Añadir Ingreso (Nomina)")
-        print("2. Añadir Gasto")
-        print("3. Ver Balance y Resumen")
-        print("4. Exportar Informe (CSV)")
-        print("5. Eliminar Gasto/Ingreso")
-        print("6. Cerrar Sesión")
-        opcion = input("Selecciona una opción: ")
+        # Cabecera personalizada con el nombre del usuario
+        mostrar_cabecera(f"📊 PANEL DE CONTROL - {usuario['username'].upper()}")
+        
+        print("  [1] 💵 Añadir Ingreso        [2] 💸 Añadir Gasto")
+        print("  [3] 📈 Ver Balance           [4] 📥 Exportar CSV")
+        print("  [5] 🗑️  Eliminar Registro     [6] 🚪 Cerrar Sesión")
+        print("  " + "─" * 49)
+        
+        opcion = input("\n  ⚡ Selecciona una acción: ").strip()
 
         if opcion == "1":
             gestionar_registro(ruta_n, CATEGORIAS_INGRESO, "INGRESO")
@@ -34,39 +34,41 @@ def menu_app(usuario):
         elif opcion == "3":
             mostrar_resumen(ruta_g, ruta_n)
         elif opcion == "4":
-            print("\n--- EXPORTAR DATOS A EXCEL (CSV) ---")
-            print("1. Exportar mis Gastos")
-            print("2. Exportar mis Nóminas")
-            sub_op = input("Selecciona qué exportar: ")
+            mostrar_cabecera("📂 EXPORTAR DATOS")
+            print("  (A) Exportar Gastos")
+            print("  (B) Exportar Nóminas")
+            sub_op = input("\n  > ¿Qué deseas exportar? (A/B): ").upper()
 
-            if sub_op == "1":
-                datos = cargar_datos(ruta_g)
-                tipo = "gastos"
-            elif sub_op == "2":
-                datos = cargar_datos(ruta_n)
-                tipo = "nominas"
+            if sub_op == "A":
+                datos, tipo = cargar_datos(ruta_g), "gastos"
+            elif sub_op == "B":
+                datos, tipo = cargar_datos(ruta_n), "ingresos"
             else:
-                print("Opción no válida.")
+                print("  ⚠️ Opción cancelada.")
                 continue
 
             if not datos:
-                print("No hay datos para exportar.")
+                print("  ❌ No hay datos para exportar.")
             else:
-                # Creamos un nombre de archivo chulo: informe_gastos_pepito.csv
                 nombre_csv = f"informe_{tipo}_{usuario['username']}.csv"
                 ruta_export = os.path.join(FOLDER_OUTPUT, nombre_csv)
-                
                 if exportar_a_csv(ruta_export, datos):
-                    print(f"¡Éxito! Archivo generado en: {ruta_export}")
-                    print("Ya puedes abrirlo con Excel o Google Sheets.")
+                    print(f"\n  ✅ ¡Éxito! Archivo: {nombre_csv}")
+                    print(f"  📍 Ubicación: {ruta_export}")
+
         elif opcion == "5":
-            print("1. Borrar un Gasto")
-            print("2. Borrar un Ingreso")
-            sub_op = input("Selecciona: ")
+            mostrar_cabecera("🗑️ ELIMINAR REGISTRO")
+            print("  (1) Borrar un Gasto")
+            print("  (2) Borrar un Ingreso")
+            sub_op = input("\n  > Selecciona: ")
             if sub_op == "1": eliminar_registro(ruta_g)
             elif sub_op == "2": eliminar_registro(ruta_n)
+            
         elif opcion == "6":
+            print(f"\n  Cerrando sesión de {usuario['username']}...")
             break
+        else:
+            print("\n  ⚠️ Opción no válida.")
 
 def gestionar_registro(ruta_fichero, categorias, tipo):
     """Ahora recibe ruta_fichero en lugar de usar una fija"""
@@ -92,11 +94,11 @@ def gestionar_registro(ruta_fichero, categorias, tipo):
 def mostrar_resumen(ruta_g, ruta_n):
     """Recibe las dos rutas del usuario actual"""
     gastos = cargar_datos(ruta_g)
-    nominas = cargar_datos(ruta_n)
+    ingresos = cargar_datos(ruta_n)
     
     total_g = calcular_total(gastos)
-    total_n = calcular_total(nominas)
-    balance = obtener_balance_general(gastos, nominas)
+    total_n = calcular_total(ingresos)
+    balance = obtener_balance_general(gastos, ingresos)
     
     print(f"\n--- RESUMEN PARA TU USUARIO ---")
     print(f"Ingresos: {total_n}€ | Gastos: {total_g}€")
@@ -160,23 +162,36 @@ def flujo_login():
     else:
         print("Usuario o contraseña incorrectos.")
 
+def mostrar_cabecera(titulo):
+    print("\n" + "═" * 38)
+    print(f"{titulo:^38}")
+    print("═" * 38)
+
 def main():
     while True:
-        print("\n--- 💰 GESTOR DE FINANZAS DAM 💰 ---")
-        print("1. Iniciar Sesión")
-        print("2. Registrarse")
-        print("3. Salir")
-        opcion = input("Selecciona una opción: ")
+        mostrar_cabecera(f"📱 MENÚ PRINCIPAL")
+        
+        # Diseño de opciones con bordes suaves
+        print("  ┌──────────────────────────────────┐")
+        print("  │  [1] 🔑 Iniciar Sesión           │")
+        print("  │  [2] 📝 Registrarse              │")
+        print("  │  [3] ❌ Salir                    │")
+        print("  └──────────────────────────────────┘")
+        
+        opcion = input("\n  > Selecciona una opción: ").strip()
         
         if opcion == "1":
+            print("\n  Cargando módulo de acceso...")
             flujo_login()
         elif opcion == "2":
+            print("\n  Abriendo formulario de registro...")
             flujo_registro()
         elif opcion == "3":
-            print("¡Hasta pronto!")
+            print("\n  ¡Gracias por usar DAM Finance! 👋")
+            print("  Cerrando sesión de forma segura...\n")
             break
         else:
-            print("Opción no válida.")
+            print("\n  ⚠️  Opción no válida. Inténtalo de nuevo.")
 
 if __name__ == "__main__":
     main()
