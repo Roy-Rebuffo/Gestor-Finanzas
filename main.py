@@ -28,9 +28,9 @@ def menu_app(usuario):
         opcion = input("\n  ⚡ Selecciona una acción: ").strip()
 
         if opcion == "1":
-            gestionar_registro(ruta_n, CATEGORIAS_INGRESO, "INGRESO")
+            gestionar_registro(ruta_n, CATEGORIAS_INGRESO, "INGRESO", ruta_g, ruta_n)
         elif opcion == "2":
-            gestionar_registro(ruta_g, CATEGORIAS_GASTO, "GASTO")
+            gestionar_registro(ruta_g, CATEGORIAS_GASTO, "GASTO", ruta_g, ruta_n)
         elif opcion == "3":
             mostrar_resumen(ruta_g, ruta_n)
         elif opcion == "4":
@@ -70,41 +70,49 @@ def menu_app(usuario):
         else:
             print("\n  ⚠️ Opción no válida.")
 
-def gestionar_registro(ruta_fichero, categorias, tipo):
-    """Ahora recibe ruta_fichero en lugar de usar una fija"""
-    print(f"\n--- NUEVO {tipo} ---")
+# Añadimos ruta_g y ruta_n como parámetros
+def gestionar_registro(ruta_fichero, categorias, tipo, ruta_g, ruta_n):
+    mostrar_cabecera(f"➕ NUEVO {tipo}")
     try:
-        concepto = input("Concepto: ")
-        cantidad = float(input("Cantidad: "))
+        concepto = input("  📝 Concepto: ")
+        cantidad = float(input("  💶 Cantidad: "))
         
+        print("\n  Categorías disponibles:")
         for i, cat in enumerate(categorias, 1):
-            print(f"{i}. {cat}")
+            print(f"    {i}. {cat}")
         
-        sel = int(input("Seleccione categoría (nº): "))
+        sel = int(input("\n  📂 Seleccione categoría (nº): "))
         cat_elegida = categorias[sel-1] if 1 <= sel <= len(categorias) else "Otros"
 
         datos = cargar_datos(ruta_fichero)
         datos.append(crear_transaccion(concepto, cantidad, cat_elegida))
         
         if guardar_datos(ruta_fichero, datos):
-            print(f"Guardado en tu archivo personal.")
+            print(f"\n  ✅ Guardado en tu archivo personal.")
+
+        # ¡Aquí está el truco! Llamamos a la función que ya tienes hecha
+        # pasando las rutas que ahora sí recibe la función.
+        mostrar_resumen(ruta_g, ruta_n)
+
     except (ValueError, IndexError):
-        print("Entrada no válida.")
+        print("\n  ❌ Entrada no válida. Registro cancelado.")
 
 def mostrar_resumen(ruta_g, ruta_n):
-    """Recibe las dos rutas del usuario actual"""
     gastos = cargar_datos(ruta_g)
     ingresos = cargar_datos(ruta_n)
     
     total_g = calcular_total(gastos)
     total_n = calcular_total(ingresos)
-    balance = obtener_balance_general(gastos, ingresos)
+    balance = total_n - total_g # O usar obtener_balance_general si la tienes
     
-    print(f"\n--- RESUMEN PARA TU USUARIO ---")
-    print(f"Ingresos: {total_n}€ | Gastos: {total_g}€")
-    color = "🟢" if balance >= 0 else "🔴"
-    print(f"ESTADO ACTUAL: {balance}€ {color}")
-
+    mostrar_cabecera("💰 ESTADO DE CUENTAS")
+    print(f"  📥 Total Ingresos: {total_n:>8.2f}€")
+    print(f"  📤 Total Gastos:   {total_g:>8.2f}€")
+    print("  " + "─" * 30)
+    
+    emoji = "🟢" if balance >= 0 else "🔴"
+    print(f"  {emoji} BALANCE FINAL: {balance:>8.2f}€")
+    print("  " + "═" * 30)
 def eliminar_registro(ruta_fichero):
     datos = cargar_datos(ruta_fichero)
     if not datos:
