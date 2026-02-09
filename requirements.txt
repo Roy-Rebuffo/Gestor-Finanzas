@@ -1,2 +1,7 @@
-# Este proyecto solo utiliza librerías estándar de Python.
-# No se requieren dependencias externas por el momento.
+# Interfaz visual y tablas en terminal
+rich
+
+## 🛠️ Instalación y Uso
+2. Ejecutar el script principal:
+   ```bash
+   pip install -r requirements.txt

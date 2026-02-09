@@ -1,31 +1,81 @@
 import os
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
 from src.persistencia import (
-    cargar_datos, guardar_datos, exportar_a_csv,obtener_ruta_usuario,
+    cargar_datos, guardar_datos, exportar_a_csv, obtener_ruta_usuario,
     FICHERO_USUARIOS, FOLDER_OUTPUT
 )
 from src.modelos import (
-    crear_usuario, crear_transaccion, 
+    crear_usuario, crear_transaccion,
     CATEGORIAS_GASTO, CATEGORIAS_INGRESO
 )
 from src.logica import obtener_balance_general, calcular_total
 from utils.validators import validar_usuario, hash_password
 
-# --- FUNCIONES DE LA APLICACIÓN ---
+# ──────────────────────────
+# CONSOLA RICH
+# ──────────────────────────
+console = Console()
+
+# ──────────────────────────
+# FUNCIONES VISUALES (NO LÓGICA)
+# ──────────────────────────
+
+def mostrar_cabecera(titulo):
+    console.print(
+        Panel.fit(
+            f"[bold cyan]{titulo}[/bold cyan]",
+            border_style="cyan"
+        )
+    )
+
+def mostrar_tabla_registros(datos, titulo):
+    if not datos:
+        console.print("[red]No hay registros para mostrar.[/red]")
+        return
+
+    tabla = Table(title=titulo, show_lines=True)
+
+    tabla.add_column("ID", justify="center", style="cyan")
+    tabla.add_column("Fecha")
+    tabla.add_column("Concepto", style="yellow")
+    tabla.add_column("Cantidad (€)", justify="right", style="green")
+    tabla.add_column("Categoría", style="magenta")
+
+    for d in datos:
+        tabla.add_row(
+            d["id"],
+            d["fecha"],
+            d["concepto"],
+            f"{d['cantidad']:.2f}",
+            d["categoria"]
+        )
+
+    console.print(tabla)
+
+# ──────────────────────────
+# APLICACIÓN
+# ──────────────────────────
 
 def menu_app(usuario):
     ruta_g = obtener_ruta_usuario(usuario['username'], "gastos")
     ruta_n = obtener_ruta_usuario(usuario['username'], "ingresos")
 
     while True:
-        # Cabecera personalizada con el nombre del usuario
         mostrar_cabecera(f"📊 PANEL DE CONTROL - {usuario['username'].upper()}")
-        
-        print("  [1] 💵 Añadir Ingreso        [2] 💸 Añadir Gasto")
-        print("  [3] 📈 Ver Balance           [4] 📥 Exportar CSV")
-        print("  [5] 🗑️  Eliminar Registro     [6] 🚪 Cerrar Sesión")
-        print("  " + "─" * 49)
-        
-        opcion = input("\n  ⚡ Selecciona una acción: ").strip()
+
+        console.print(
+            "[bold][1][/bold] 💵 Añadir Ingreso      "
+            "[bold][2][/bold] 💸 Añadir Gasto\n"
+            "[bold][3][/bold] 📈 Ver Balance         "
+            "[bold][4][/bold] 📥 Exportar CSV\n"
+            "[bold][5][/bold] 🗑️ Eliminar Registro   "
+            "[bold][6][/bold] 🚪 Cerrar Sesión"
+        )
+
+        opcion = input("\n⚡ Selecciona una acción: ").strip()
 
         if opcion == "1":
             gestionar_registro(ruta_n, CATEGORIAS_INGRESO, "INGRESO", ruta_g, ruta_n)
@@ -35,171 +85,173 @@ def menu_app(usuario):
             mostrar_resumen(ruta_g, ruta_n)
         elif opcion == "4":
             mostrar_cabecera("📂 EXPORTAR DATOS")
-            print("  (A) Exportar Gastos")
-            print("  (B) Exportar Nóminas")
-            sub_op = input("\n  > ¿Qué deseas exportar? (A/B): ").upper()
+            console.print("[A] Exportar Gastos\n[B] Exportar Nóminas")
+            sub_op = input("> ¿Qué deseas exportar? (A/B): ").upper()
 
             if sub_op == "A":
                 datos, tipo = cargar_datos(ruta_g), "gastos"
             elif sub_op == "B":
                 datos, tipo = cargar_datos(ruta_n), "ingresos"
             else:
-                print("  ⚠️ Opción cancelada.")
+                console.print("[yellow]Opción cancelada.[/yellow]")
                 continue
 
             if not datos:
-                print("  ❌ No hay datos para exportar.")
+                console.print("[red]No hay datos para exportar.[/red]")
             else:
                 nombre_csv = f"informe_{tipo}_{usuario['username']}.csv"
                 ruta_export = os.path.join(FOLDER_OUTPUT, nombre_csv)
+                
+                # --- BARRA DE PROGRESO DE RICH ---
+                import time
+                from rich.progress import track
+                
+                print()
+                for _ in track(range(10), description=f"[cyan]Generando {nombre_csv}..."):
+                    time.sleep(0.1) # Simula el procesamiento de datos
+                
                 if exportar_a_csv(ruta_export, datos):
-                    print(f"\n  ✅ ¡Éxito! Archivo: {nombre_csv}")
-                    print(f"  📍 Ubicación: {ruta_export}")
+                    console.print(f"\n[bold green]✅ ¡Éxito![/bold green] Archivo en: [white u]{ruta_export}[/white u]")
 
         elif opcion == "5":
             mostrar_cabecera("🗑️ ELIMINAR REGISTRO")
-            print("  (1) Borrar un Gasto")
-            print("  (2) Borrar un Ingreso")
-            sub_op = input("\n  > Selecciona: ")
-            if sub_op == "1": eliminar_registro(ruta_g)
-            elif sub_op == "2": eliminar_registro(ruta_n)
-            
+            console.print("[1] Borrar Gasto\n[2] Borrar Ingreso")
+            sub_op = input("> Selecciona: ")
+
+            if sub_op == "1":
+                eliminar_registro(ruta_g)
+            elif sub_op == "2":
+                eliminar_registro(ruta_n)
+
         elif opcion == "6":
-            print(f"\n  Cerrando sesión de {usuario['username']}...")
+            console.print(f"[cyan]Cerrando sesión de {usuario['username']}...[/cyan]")
             break
         else:
-            print("\n  ⚠️ Opción no válida.")
+            console.print("[red]Opción no válida.[/red]")
 
-# Añadimos ruta_g y ruta_n como parámetros
 def gestionar_registro(ruta_fichero, categorias, tipo, ruta_g, ruta_n):
     mostrar_cabecera(f"➕ NUEVO {tipo}")
+
     try:
-        concepto = input("  📝 Concepto: ")
-        cantidad = float(input("  💶 Cantidad: "))
-        
-        print("\n  Categorías disponibles:")
+        concepto = input("📝 Concepto: ")
+        cantidad = float(input("💶 Cantidad: "))
+
+        console.print("\nCategorías disponibles:")
         for i, cat in enumerate(categorias, 1):
-            print(f"    {i}. {cat}")
-        
-        sel = int(input("\n  📂 Seleccione categoría (nº): "))
-        cat_elegida = categorias[sel-1] if 1 <= sel <= len(categorias) else "Otros"
+            console.print(f"{i}. {cat}")
+
+        sel = int(input("📂 Seleccione categoría (nº): "))
+        cat_elegida = categorias[sel - 1] if 1 <= sel <= len(categorias) else "Otros"
 
         datos = cargar_datos(ruta_fichero)
         datos.append(crear_transaccion(concepto, cantidad, cat_elegida))
-        
-        if guardar_datos(ruta_fichero, datos):
-            print(f"\n  ✅ Guardado en tu archivo personal.")
 
-        # ¡Aquí está el truco! Llamamos a la función que ya tienes hecha
-        # pasando las rutas que ahora sí recibe la función.
+        if guardar_datos(ruta_fichero, datos):
+            console.print("[green]Registro guardado correctamente.[/green]")
+
         mostrar_resumen(ruta_g, ruta_n)
 
     except (ValueError, IndexError):
-        print("\n  ❌ Entrada no válida. Registro cancelado.")
+        console.print("[red]Entrada no válida. Registro cancelado.[/red]")
 
 def mostrar_resumen(ruta_g, ruta_n):
     gastos = cargar_datos(ruta_g)
     ingresos = cargar_datos(ruta_n)
-    
+
     total_g = calcular_total(gastos)
     total_n = calcular_total(ingresos)
-    balance = total_n - total_g # O usar obtener_balance_general si la tienes
-    
-    mostrar_cabecera("💰 ESTADO DE CUENTAS")
-    print(f"  📥 Total Ingresos: {total_n:>8.2f}€")
-    print(f"  📤 Total Gastos:   {total_g:>8.2f}€")
-    print("  " + "─" * 30)
-    
-    emoji = "🟢" if balance >= 0 else "🔴"
-    print(f"  {emoji} BALANCE FINAL: {balance:>8.2f}€")
-    print("  " + "═" * 30)
+    balance = total_n - total_g
+
+    tabla = Table(title="💰 ESTADO DE CUENTAS")
+    tabla.add_column("Tipo")
+    tabla.add_column("Importe (€)", justify="right")
+
+    tabla.add_row("Ingresos", f"{total_n:.2f}")
+    tabla.add_row("Gastos", f"{total_g:.2f}")
+
+    estilo = "green" if balance >= 0 else "red"
+    tabla.add_row("Balance", f"[{estilo}]{balance:.2f}[/{estilo}]")
+
+    console.print(tabla)
+
 def eliminar_registro(ruta_fichero):
     datos = cargar_datos(ruta_fichero)
+
     if not datos:
-        print("No hay registros para borrar.")
+        console.print("[red]No hay registros para borrar.[/red]")
         return
 
-    print("\n--- ELIMINAR REGISTRO ---")
-    for d in datos:
-        print(f"ID: {d['id']} | {d['fecha']} | {d['concepto']} | {d['cantidad']}€")
-    
-    id_a_borrar = input("\nIntroduce el ID del registro que quieres borrar (o 'q' para cancelar): ")
-    
-    if id_a_borrar.lower() == 'q': return
+    mostrar_tabla_registros(datos, "🗑️ Registros disponibles")
 
-    # Filtramos la lista: nos quedamos con todo MENOS con el ID que queremos borrar
-    nuevos_datos = [d for d in datos if d['id'] != id_a_borrar]
+    id_a_borrar = input("Introduce el ID (o 'q' para cancelar): ")
+    if id_a_borrar.lower() == "q":
+        return
+
+    nuevos_datos = [d for d in datos if d["id"] != id_a_borrar]
 
     if len(nuevos_datos) < len(datos):
-        if guardar_datos(ruta_fichero, nuevos_datos):
-            print("Registro eliminado correctamente.")
+        guardar_datos(ruta_fichero, nuevos_datos)
+        console.print("[green]Registro eliminado correctamente.[/green]")
     else:
-        print("No se encontró ningún registro con ese ID.")
+        console.print("[red]No se encontró ese ID.[/red]")
 
-# --- FLUJO DE INICIO Y LOGIN ---
+# ──────────────────────────
+# LOGIN / REGISTRO
+# ──────────────────────────
 
 def flujo_registro():
-    print("\n--- REGISTRO DE USUARIO ---")
-    username = input("Introduce nombre de usuario: ")
+    mostrar_cabecera("📝 REGISTRO DE USUARIO")
+
+    username = input("Usuario: ")
     usuarios = cargar_datos(FICHERO_USUARIOS)
-    
-    if any(u['username'] == username for u in usuarios):
-        print("Error: El usuario ya existe.")
+
+    if any(u["username"] == username for u in usuarios):
+        console.print("[red]El usuario ya existe.[/red]")
         return
 
-    password = input("Introduce contraseña: ")
-    email = input("Introduce email: ")
-    
+    password = input("Contraseña: ")
+    email = input("Email: ")
+
     pw_hash = hash_password(password)
-    nuevo_usuario = crear_usuario(username, pw_hash, email)
-    
-    usuarios.append(nuevo_usuario)
-    if guardar_datos(FICHERO_USUARIOS, usuarios):
-        print("Registro completado con éxito.")
+    usuarios.append(crear_usuario(username, pw_hash, email))
+    guardar_datos(FICHERO_USUARIOS, usuarios)
+
+    console.print("[green]Usuario registrado correctamente.[/green]")
 
 def flujo_login():
-    print("\n--- LOGIN ---")
+    mostrar_cabecera("🔑 LOGIN")
+
     username = input("Usuario: ")
     password = input("Contraseña: ")
-    
-    usuario_logueado = validar_usuario(username, password)
-    
-    if usuario_logueado:
-        print(f"\n¡Bienvenido de nuevo, {username}!")
-        menu_app(usuario_logueado)
-    else:
-        print("Usuario o contraseña incorrectos.")
 
-def mostrar_cabecera(titulo):
-    print("\n" + "═" * 38)
-    print(f"{titulo:^38}")
-    print("═" * 38)
+    usuario = validar_usuario(username, password)
+    if usuario:
+        console.print(f"[green]Bienvenido {username}![/green]")
+        menu_app(usuario)
+    else:
+        console.print("[red]Credenciales incorrectas.[/red]")
 
 def main():
     while True:
-        mostrar_cabecera(f"📱 MENÚ PRINCIPAL")
-        
-        # Diseño de opciones con bordes suaves
-        print("  ┌──────────────────────────────────┐")
-        print("  │  [1] 🔑 Iniciar Sesión           │")
-        print("  │  [2] 📝 Registrarse              │")
-        print("  │  [3] ❌ Salir                    │")
-        print("  └──────────────────────────────────┘")
-        
-        opcion = input("\n  > Selecciona una opción: ").strip()
-        
+        mostrar_cabecera("📱 MENÚ PRINCIPAL")
+
+        console.print(
+            "[1] 🔑 Iniciar Sesión\n"
+            "[2] 📝 Registrarse\n"
+            "[3] ❌ Salir"
+        )
+
+        opcion = input("> Selecciona una opción: ").strip()
+
         if opcion == "1":
-            print("\n  Cargando módulo de acceso...")
             flujo_login()
         elif opcion == "2":
-            print("\n  Abriendo formulario de registro...")
             flujo_registro()
         elif opcion == "3":
-            print("\n  ¡Gracias por usar DAM Finance! 👋")
-            print("  Cerrando sesión de forma segura...\n")
+            console.print("[cyan]Gracias por usar DAM Finance 👋[/cyan]")
             break
         else:
-            print("\n  ⚠️  Opción no válida. Inténtalo de nuevo.")
+            console.print("[red]Opción no válida.[/red]")
 
 if __name__ == "__main__":
     main()
